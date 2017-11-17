@@ -46,6 +46,8 @@ class WeatherbotSkeleton():
         if lies:
             name_json = get_weather_from_api(headers, self.api_key)
             self.place_name = name_json["name"]
+            LOG.info(
+                f"Lying, reporting weather from {self.json['name']} under name {self.place_name}")
         else:
             self.place_name = self.json["name"]
 
