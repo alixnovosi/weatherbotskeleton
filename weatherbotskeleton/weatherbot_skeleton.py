@@ -259,7 +259,7 @@ def get_time_descriptor():
 # Wrappers around Open Weather Map API, to get weather info.
 def get_weather_from_api(headers, api_key):
     """Get weather blob for a random city from the openweathermap API."""
-    zip = botskeleton.random_line(path.join(HERE, "ZIP_CODES"))
+    zip = botskeleton.random_line(path.join(HERE, "ZIP_CODES.txt"))
     LOG.info(f"Random zip code is {zip}.")
 
     url = get_zip_url(zip, api_key)

@@ -10,8 +10,8 @@ setup(author="Andrew Michaud",
       author_email="bots+weatherbotskeleton@mail.andrewmichaud.com",
       install_requires=["botskeleton>=1.2.2", "requests>=2.11.1"],
       python_requires=">=3.6",
-      package_date={
-          "weatherbotskeleton": ["ZIP_CODES"],
+      package_data={
+          "weatherbotskeleton": ["ZIP_CODES.txt"],
       },
       license="BSD3",
       name="weatherbotskeleton",
