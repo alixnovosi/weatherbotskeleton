@@ -40,7 +40,7 @@ class WeatherbotSkeleton():
 
         self.bot_skeleton = botskeleton.BotSkeleton(self.secrets_dir, bot_name=self.bot_name)
         self.bot_skeleton.delay = delay
-        LOG = self.bot_skeleton.log
+        self.log = LOG
 
         with open(path.join(self.secrets_dir, "api_key"), "r") as f:
             self.api_key = f.read().strip()
