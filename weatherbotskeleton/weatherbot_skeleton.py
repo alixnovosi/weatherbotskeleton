@@ -17,6 +17,8 @@ class WeatherbotSkeleton():
     """Class to store things we need for weather."""
     def __init__(self, secrets_dir=None, owner_url=None, version="0.0.0", bot_name="A bot",
                  delay=0, lies=False):
+
+        global LOG
         if secrets_dir is None:
             LOG.error("Please provide secrets dir!")
             raise Exception
@@ -29,30 +31,34 @@ class WeatherbotSkeleton():
         self.owner_url = owner_url
         self.bot_name = bot_name
         self.version = version
+        self.place_name = None
+        self.json = None
+        self.lies = lies
 
         user_agent = f"{self.bot_name}/{self.version} ({self.owner_url})"
-        headers = {"User-Agent": user_agent}
+        self.headers = {"User-Agent": user_agent}
 
         self.bot_skeleton = botskeleton.BotSkeleton(self.secrets_dir, bot_name=self.bot_name)
         self.bot_skeleton.delay = delay
+        LOG = self.bot_skeleton.log
 
         with open(path.join(self.secrets_dir, "api_key"), "r") as f:
             self.api_key = f.read().strip()
 
-        self.json = get_weather_from_api(headers, self.api_key)
+    def produce_status(self):
+        """Produce status from the current weather somewhere."""
+        self.json = get_weather_from_api(self.headers, self.api_key)
         LOG.debug(f"Full JSON from weather API: {self.json}")
 
         # If asked to lie, call for another bit of weather and use that as our name.
-        if lies:
-            name_json = get_weather_from_api(headers, self.api_key)
+        if self.lies:
+            name_json = get_weather_from_api(self.headers, self.api_key)
             self.place_name = name_json["name"]
             LOG.info(
                 f"Lying, reporting weather from {self.json['name']} under name {self.place_name}")
         else:
             self.place_name = self.json["name"]
 
-    def produce_status(self):
-        """Produce status from the current weather somewhere."""
         thing = random.choice(list(WeatherThings))
 
         if thing == WeatherThings.WIND_SPEED:
@@ -97,14 +103,13 @@ def windspeed_handle(place_name, json):
             f"The wind speed in {place_name} is {wind_speed} m/s at this moment.",
         ])
 
-    else:
-        # Close enough?
-        imperial_speed = round(wind_speed * 2.237, 2)
-        return random.choice([
-            f"The current wind speed in {place_name} is {imperial_speed} miles per hour.",
-            f"The wind speed in {place_name} is {imperial_speed} mph.",
-            f"The wind speed in {place_name} is {imperial_speed} mph last I checked.",
-        ])
+    # Close enough?
+    imperial_speed = round(wind_speed * 2.237, 2)
+    return random.choice([
+        f"The current wind speed in {place_name} is {imperial_speed} miles per hour.",
+        f"The wind speed in {place_name} is {imperial_speed} mph.",
+        f"The wind speed in {place_name} is {imperial_speed} mph last I checked.",
+    ])
 
 
 def cloudiness_handle(place_name, json):
@@ -183,24 +188,22 @@ def humidity_handle(place_name, json):
             f"It is {humidity}% humid in {place_name} right now.",
         ])
 
-    else:
-        if humidity < 40:
-            return random.choice([
-                f"It is very dry in {place_name} right now ({humidity}% humidity).",
-                f"It's very dry in {place_name} ({humidity}% humidity).",
-            ])
+    if humidity < 40:
+        return random.choice([
+            f"It is very dry in {place_name} right now ({humidity}% humidity).",
+            f"It's very dry in {place_name} ({humidity}% humidity).",
+        ])
 
-        elif humidity >= 40 and humidity < 75:
-            return random.choice([
-                f"It's mildly humid in {place_name} ({humidity}% humid).",
-                f"It's kinda wet in {place_name} ({humidity}% humid).",
-            ])
+    elif humidity >= 40 and humidity < 75:
+        return random.choice([
+            f"It's mildly humid in {place_name} ({humidity}% humid).",
+            f"It's kinda wet in {place_name} ({humidity}% humid).",
+        ])
 
-        else:
-            return random.choice([
-                f"It's very humid in {place_name} ({humidity}% humid).",
-                f"It's quite wet in {place_name} right now ({humidity}% humid).",
-            ])
+    return random.choice([
+        f"It's very humid in {place_name} ({humidity}% humid).",
+        f"It's quite wet in {place_name} right now ({humidity}% humid).",
+    ])
 
 
 def temp_handle(place_name, json):
@@ -212,9 +215,8 @@ def temp_handle(place_name, json):
         celsius_temp = round(float(temp) - 273.15, 2)
         return f"It's {celsius_temp} °C in {place_name} right now."
 
-    else:
-        fahrenheit_temp = round((float(temp) * (9.0 / 5)) - 459.67, 2)
-        return f"It's {fahrenheit_temp} °F in {place_name}."
+    fahrenheit_temp = round((float(temp) * (9.0 / 5)) - 459.67, 2)
+    return f"It's {fahrenheit_temp} °F in {place_name}."
 
 
 def sunthing_handle(thing, place_name, json):
@@ -248,11 +250,10 @@ def sunthing_handle(thing, place_name, json):
             f"You could have seen the {sunthing} in {place_name}. It was at {formatted_datetime}.",
         ])
 
-    else:
-        return random.choice([
-            f"The next {sunthing} in {place_name} will happen at {formatted_datetime} UTC.",
-            f"You could watch the {sunthing} in {place_name} at {formatted_datetime} UTC.",
-        ])
+    return random.choice([
+        f"The next {sunthing} in {place_name} will happen at {formatted_datetime} UTC.",
+        f"You could watch the {sunthing} in {place_name} at {formatted_datetime} UTC.",
+    ])
 
 def get_time_descriptor():
     """Get a phrase like "currently" or "right now", or nothing at all. Provides leading space."""
@@ -261,10 +262,10 @@ def get_time_descriptor():
 # Wrappers around Open Weather Map API, to get weather info.
 def get_weather_from_api(headers, api_key):
     """Get weather blob for a random city from the openweathermap API."""
-    zip = botskeleton.random_line(path.join(HERE, "ZIP_CODES.txt"))
-    LOG.info(f"Random zip code is {zip}.")
+    zip_code = botskeleton.random_line(path.join(HERE, "ZIP_CODES.txt"))
+    LOG.info(f"Random zip code is {zip_code}.")
 
-    url = get_zip_url(zip, api_key)
+    url = get_zip_url(zip_code, api_key)
     LOG.info(f"Hitting {url} for weather.")
 
     weather = openweathermap_api_call(url, headers)
@@ -284,14 +285,15 @@ def get_weather_from_api(headers, api_key):
 
         else:
             LOG.info(f"No clue how to handle code.")
-            raise Exception(f"Received error {cod} from openweather API. Full response: {weather_json}")
+            raise Exception(f"Received error {cod} from openweather API. Full response: "
+                            f"{weather_json}")
 
     return weather_json
 
 
-def get_zip_url(zip, api_key):
+def get_zip_url(zip_code, api_key):
     """Format a URL to get weather by zip code from the OpenWeatherMap API."""
-    return f"{WEATHER_ROOT}?zip={zip},us&appid={api_key}"
+    return f"{WEATHER_ROOT}?zip={zip_code},us&appid={api_key}"
 
 
 # Actual rate-limited API calls here.
@@ -310,9 +312,3 @@ class WeatherThings(Enum):
     SUNSET = 300
     HUMIDITY = 400
     TEMP = 500
-
-
-# Pass some things through botskeleton.
-def set_up_logging():
-    """Set up logging, through botskeleton."""
-    return botskeleton.set_up_logging()
