@@ -273,12 +273,12 @@ def get_weather_from_api(headers, api_key):
 
 
     # Handle errors kinda sorta.
-    cod = weather_json["cod"]
-    if cod != 200:
+    cod = str(weather_json["cod"])
+    if cod != "200":
         LOG.info(f"Got non-200 code {cod}.")
 
         # Handle 404 and 500 with one retry (seems to work for now).
-        if cod == 500 or cod == 404:
+        if cod == "500" or cod == "404":
             LOG.info(f"Cod is 500 or 404, attempting to retry.")
             weather = openweathermap_api_call(url, headers)
             weather_json = weather.json()

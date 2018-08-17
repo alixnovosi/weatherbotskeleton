@@ -8,7 +8,7 @@ with open(path.join(HERE, "VERSION"), encoding="utf-8") as f:
 
 setup(author="Andrew Michaud",
       author_email="bots+weatherbotskeleton@mail.andrewmichaud.com",
-      install_requires=["botskeleton>=2.0.5", "requests>=2.18.4"],
+      install_requires=["botskeleton>=2.2.0", "requests>=2.19.1"],
       python_requires=">=3.6",
       package_data={
           "weatherbotskeleton": ["ZIP_CODES.txt"],
