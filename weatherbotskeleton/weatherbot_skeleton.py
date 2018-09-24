@@ -23,10 +23,6 @@ class WeatherbotSkeleton():
             LOG.error("Please provide secrets dir!")
             raise Exception
 
-        if owner_url is None:
-            LOG.error("Please provide owner_url!")
-            raise Exception
-
         self.secrets_dir = secrets_dir
         self.owner_url = owner_url
         self.bot_name = bot_name
