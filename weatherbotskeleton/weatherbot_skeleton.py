@@ -11,21 +11,16 @@ import requests
 HERE = path.abspath(path.dirname(__file__))
 WEATHER_ROOT = "http://api.openweathermap.org/data/2.5/weather"
 
-LOG = logging.getLogger("root")
-
 class WeatherbotSkeleton():
     """Class to store things we need for weather."""
     def __init__(self, secrets_dir=None, owner_url=None, version="0.0.0", bot_name="A bot",
                  delay=0, lies=False):
 
-        global LOG
         if secrets_dir is None:
-            LOG.error("Please provide secrets dir!")
-            raise Exception
+            raise Exception("Please provide secrets dir!")
 
         if owner_url is None:
-            LOG.error("Please provide owner_url!")
-            raise Exception
+            raise Exception("Please provide owner_url!")
 
         self.secrets_dir = secrets_dir
         self.owner_url = owner_url
@@ -40,7 +35,7 @@ class WeatherbotSkeleton():
 
         self.bot_skeleton = botskeleton.BotSkeleton(self.secrets_dir, bot_name=self.bot_name)
         self.bot_skeleton.delay = delay
-        self.log = LOG
+        self.log = self.botskeleton.log
 
         with open(path.join(self.secrets_dir, "api_key"), "r") as f:
             self.api_key = f.read().strip()
@@ -48,13 +43,13 @@ class WeatherbotSkeleton():
     def produce_status(self):
         """Produce status from the current weather somewhere."""
         self.json = get_weather_from_api(self.headers, self.api_key)
-        LOG.debug(f"Full JSON from weather API: {self.json}")
+        self.log.debug(f"Full JSON from weather API: {self.json}")
 
         # If asked to lie, call for another bit of weather and use that as our name.
         if self.lies:
             name_json = get_weather_from_api(self.headers, self.api_key)
             self.place_name = name_json["name"]
-            LOG.info(
+            self.log.info(
                 f"Lying, reporting weather from {self.json['name']} under name {self.place_name}")
         else:
             self.place_name = self.json["name"]
@@ -92,7 +87,7 @@ class WeatherbotSkeleton():
 # Individual status generators for different kinds of weather stuff.
 def windspeed_handle(place_name, json):
     """Handle a status about wind speed."""
-    LOG.info("Producing a status on wind speed.")
+    self.log.info("Producing a status on wind speed.")
     wind_speed = float(json["wind"]["speed"])
 
     # Either show in m/s or mph.
@@ -114,7 +109,7 @@ def windspeed_handle(place_name, json):
 
 def cloudiness_handle(place_name, json):
     """Handle a status about clouds."""
-    LOG.info("Producing a status on cloudiness.")
+    self.log.info("Producing a status on cloudiness.")
     cloudiness = float(json["clouds"]["all"])
 
     # Provide either a status with the exact cloudiness, or one describing roughly how cloudy it
@@ -178,7 +173,7 @@ def cloudiness_handle(place_name, json):
 
 def humidity_handle(place_name, json):
     """Handle a status about humidity."""
-    LOG.info("Producing a status on humidity.")
+    self.log.info("Producing a status on humidity.")
     humidity = float(json["main"]["humidity"])
 
     # Provide either a status with the exact humidity, or one describing roughly how wet it is.
@@ -208,7 +203,7 @@ def humidity_handle(place_name, json):
 
 def temp_handle(place_name, json):
     """Handle a status about the temperature."""
-    LOG.info("Producing a status on temperature.")
+    self.log.info("Producing a status on temperature.")
     temp = json["main"]["temp"]
 
     if random.choice(range(2)) > 0:
@@ -222,12 +217,12 @@ def temp_handle(place_name, json):
 def sunthing_handle(thing, place_name, json):
     """Handle a status about the sunset or sunrise."""
     if thing == WeatherThings.SUNRISE:
-        LOG.info("Producing a status on the sunrise.")
+        self.log.info("Producing a status on the sunrise.")
         sunthing_time = json["sys"]["sunrise"]
         sunthing = "sunrise"
 
     else:
-        LOG.info("Producing a status on the sunset.")
+        self.log.info("Producing a status on the sunset.")
         sunthing_time = json["sys"]["sunset"]
         sunthing = "sunset"
 
@@ -263,10 +258,10 @@ def get_time_descriptor():
 def get_weather_from_api(headers, api_key):
     """Get weather blob for a random city from the openweathermap API."""
     zip_code = botskeleton.random_line(path.join(HERE, "ZIP_CODES.txt"))
-    LOG.info(f"Random zip code is {zip_code}.")
+    self.log.info(f"Random zip code is {zip_code}.")
 
     url = get_zip_url(zip_code, api_key)
-    LOG.info(f"Hitting {url} for weather.")
+    self.log.info(f"Hitting {url} for weather.")
 
     weather = openweathermap_api_call(url, headers)
     weather_json = weather.json()
@@ -275,16 +270,16 @@ def get_weather_from_api(headers, api_key):
     # Handle errors kinda sorta.
     cod = str(weather_json["cod"])
     if cod != "200":
-        LOG.info(f"Got non-200 code {cod}.")
+        self.log.info(f"Got non-200 code {cod}.")
 
         # Handle 404 and 500 with one retry (seems to work for now).
         if cod == "500" or cod == "404":
-            LOG.info(f"Cod is 500 or 404, attempting to retry.")
+            self.log.info(f"Cod is 500 or 404, attempting to retry.")
             weather = openweathermap_api_call(url, headers)
             weather_json = weather.json()
 
         else:
-            LOG.info(f"No clue how to handle code.")
+            self.log.info(f"No clue how to handle code.")
             raise Exception(f"Received error {cod} from openweather API. Full response: "
                             f"{weather_json}")
 
