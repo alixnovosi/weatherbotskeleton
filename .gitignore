@@ -1,0 +1,10 @@
+weatherbotskeleton/__pycache__
+weatherbotskeleton/outputs/__pycache__
+weatherbotskeleton/test/__pycache__
+dist
+build
+weatherbotskeleton.egg-info/
+.eggs
+.mypy_cache
+.pytest_cache
+
