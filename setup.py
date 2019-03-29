@@ -13,6 +13,7 @@ setup(author="Andrew Michaud",
       author_email="bots+weatherbotskeleton@mail.andrewmichaud.com",
       install_requires=[
           "botskeleton>=3.2.4",
+          "pycountry>=18.12.8",
           "requests>=2.21.0",
       ],
       python_requires=">=3.6",

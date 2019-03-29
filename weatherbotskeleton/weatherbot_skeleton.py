@@ -1,3 +1,4 @@
+import json
 import logging
 import random
 from datetime import datetime, timedelta
@@ -5,6 +6,7 @@ from enum import Enum
 from os import path
 
 import botskeleton
+import pycountry
 import requests
 
 
@@ -13,8 +15,18 @@ WEATHER_ROOT = "http://api.openweathermap.org/data/2.5/weather"
 
 class WeatherbotSkeleton():
     """Class to store things we need for weather."""
-    def __init__(self, secrets_dir=None, owner_url=None, version="0.0.0", bot_name="A bot",
-                 delay=0, lies=False):
+    def __init__(
+            self,
+            *,
+            secrets_dir=None,
+            owner_url=None,
+            version="0.0.0",
+            bot_name="A bot",
+            delay=0,
+            lies=False,
+            cities_file=None,
+
+    ):
 
         if secrets_dir is None:
             raise Exception("Please provide secrets dir!")
@@ -29,6 +41,7 @@ class WeatherbotSkeleton():
         self.place_name = None
         self.json = None
         self.lies = lies
+        self.cities_file = cities_file
 
         user_agent = f"{self.bot_name}/{self.version} ({self.owner_url})"
         self.headers = {"User-Agent": user_agent}
@@ -40,19 +53,23 @@ class WeatherbotSkeleton():
         with open(path.join(self.secrets_dir, "api_key"), "r") as f:
             self.api_key = f.read().strip()
 
-    def produce_status(self):
+
+    def produce_status(self, zip_code=None):
         """Produce status from the current weather somewhere."""
-        self.json = self.get_weather_from_api()
+        if zip_code is not None:
+            self.json, identifier = self.get_weather_from_api(zip_code)
+        else:
+            self.json, identifier = self.get_weather_from_api()
         self.log.debug(f"Full JSON from weather API: {self.json}")
 
         # If asked to lie, call for another bit of weather and use that as our name.
         if self.lies:
-            name_json = self.get_weather_from_api(self.headers, self.api_key)
-            self.place_name = name_json["name"]
+            name_json, identifier = self.get_weather_from_api()
+            self.place_name = identifier
             self.log.info(
                 f"Lying, reporting weather from {self.json['name']} under name {self.place_name}")
         else:
-            self.place_name = self.json["name"]
+            self.place_name = identifier
 
         thing = random.choice(list(WeatherThings))
 
@@ -249,17 +266,36 @@ class WeatherbotSkeleton():
             f"You could watch the {sunthing} in {self.place_name} at {formatted_datetime} UTC.",
         ])
 
-    def get_weather_from_api(self):
+    def get_weather_from_api(self, *, zip_code=None, zone="US"):
         """Get weather blob for a random city from the openweathermap API."""
-        zip_code = botskeleton.random_line(path.join(HERE, "ZIP_CODES.txt"))
-        self.log.info(f"Random zip code is {zip_code}.")
+        if zip_code is None:
 
-        url = get_zip_url(zip_code, self.api_key)
+            if self.cities_file is not None:
+                with open(self.cities_file, "r") as f:
+                    cities = json.loads(f.read().strip())
+
+                city = random.choice(cities)
+                self.log.info(f"Random city is {city}.")
+
+                url = get_city_url(city["id"], self.api_key)
+
+                city_name = city["name"]
+                country_code = city["country"]
+                country_name = pycountry.countries.get(alpha_2=country_code).name
+
+                identifier = f"{city_name}, {country_name}"
+
+            else:
+                zip_code = botskeleton.random_line(path.join(HERE, "ZIP_CODES.txt"))
+                self.log.info(f"Random zip code is {zip_code}.")
+                url = get_zip_url(zip_code, self.api_key)
+
+                identifier = None
+
         self.log.info(f"Hitting {url} for weather.")
 
         weather = openweathermap_api_call(url, self.headers)
         weather_json = weather.json()
-
 
         # Handle errors kinda sorta.
         cod = str(weather_json["cod"])
@@ -273,11 +309,12 @@ class WeatherbotSkeleton():
                 weather_json = weather.json()
 
             else:
-                self.log.error(f"No clue how to handle code.")
-                raise Exception(f"Received error {cod} from openweather API. Full response: "
-                                f"{weather_json}")
+                # TODO expose a bot error handle method in botskeleton,
+                # and use that here.
+                self.log.error((f"No clue how to handle code {cod} from openweather API. " +
+                           f"Full response: {weather_json}"))
 
-        return weather_json
+        return weather_json, identifier
 
 
 def get_time_descriptor():
@@ -288,6 +325,11 @@ def get_time_descriptor():
 def get_zip_url(zip_code, api_key):
     """Format a URL to get weather by zip code from the OpenWeatherMap API."""
     return f"{WEATHER_ROOT}?zip={zip_code},us&appid={api_key}"
+
+
+def get_city_url(city_code, api_key):
+    """Format a URL to get weather by city code from the OpenWeatherMap API."""
+    return f"{WEATHER_ROOT}?id={city_code}&appid={api_key}"
 
 
 # Actual rate-limited API calls here.
