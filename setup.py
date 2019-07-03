@@ -12,7 +12,7 @@ with open(path.join(HERE, "README.rst")) as f:
 setup(author="Andrew Michaud",
       author_email="bots+weatherbotskeleton@mail.andrewmichaud.com",
       install_requires=[
-          "botskeleton>=3.3.4",
+          "botskeleton>=3.3.6",
           "pycountry>=18.12.8",
           "requests>=2.22.0",
       ],
