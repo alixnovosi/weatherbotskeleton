@@ -50,7 +50,7 @@ class WeatherbotSkeleton():
         self.bot_skeleton.delay = delay
         self.log = self.bot_skeleton.log
 
-        with open(path.join(self.secrets_dir, "api_key"), "r") as f:
+        with open(path.join(self.secrets_dir, "api_key"), "r", encoding="utf-8") as f:
             self.api_key = f.read().strip()
 
 
@@ -271,7 +271,7 @@ class WeatherbotSkeleton():
         if zip_code is None:
 
             if self.cities_file is not None:
-                with open(self.cities_file, "r") as f:
+                with open(self.cities_file, "r", encoding="utf-8") as f:
                     cities = json.loads(f.read().strip())
 
                 city = random.choice(cities)
